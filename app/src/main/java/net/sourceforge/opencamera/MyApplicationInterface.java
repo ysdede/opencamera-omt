@@ -1205,14 +1205,56 @@ public class MyApplicationInterface extends BasicApplicationInterface {
     /**
      * Get OMT streaming name (visible in receiver discovery).
      * Format follows OMT standard: "DeviceName (Source)"
+     * 
+     * Priority:
+     * 1. User-defined custom name from preferences
+     * 2. Auto-generated: Model_UniqueID (Camera)
+     * 
+     * Uses ANDROID_ID to ensure uniqueness even with multiple identical devices.
      */
     public String getOmtStreamingName() {
+        // 1. Check for user-defined custom name
         String customName = sharedPreferences.getString(PreferenceKeys.OmtStreamingNameKey, null);
         if (customName != null && !customName.isEmpty()) {
             return customName;
         }
-        // Default: Match OMT standard format like omtandroid uses
-        return "Android (Camera)";
+        
+        // 2. Auto-generate unique name: Model_XXXX (Camera)
+        return getUniqueDeviceName() + " (Camera)";
+    }
+    
+    /**
+     * Generate a unique device identifier: Model_XXXX
+     * Uses ANDROID_ID for uniqueness across identical devices.
+     */
+    private String getUniqueDeviceName() {
+        // Get device model (e.g., "Pixel 6", "SM-G991B")
+        String model = android.os.Build.MODEL;
+        
+        // Get unique Android ID (unique per device + app signing key)
+        String androidId = null;
+        try {
+            androidId = android.provider.Settings.Secure.getString(
+                    main_activity.getContentResolver(),
+                    android.provider.Settings.Secure.ANDROID_ID
+            );
+        } catch (Exception e) {
+            // Ignore
+        }
+        
+        // Generate short unique suffix (first 4 chars of ANDROID_ID)
+        String uniqueSuffix = "";
+        if (androidId != null && androidId.length() >= 4) {
+            uniqueSuffix = "_" + androidId.substring(0, 4).toUpperCase();
+        } else {
+            // Fallback: use random suffix
+            uniqueSuffix = "_" + String.format("%04X", (int)(Math.random() * 0xFFFF));
+        }
+        
+        // Clean model name (remove spaces and special chars)
+        String cleanModel = model.replaceAll("[^a-zA-Z0-9\\-]", "_").trim();
+        
+        return cleanModel + uniqueSuffix;
     }
 
     @Override
