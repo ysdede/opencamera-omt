@@ -184,18 +184,18 @@
         <ListPreference
             android:key="preference_omt_streaming_quality"
             android:title="Streaming Quality"
-            android:summary="Higher quality requires faster network"
+            android:summary="Low recommended for WiFi stability"
             android:entries="@array/preference_omt_quality_entries"
             android:entryValues="@array/preference_omt_quality_values"
-            android:defaultValue="50"
+            android:defaultValue="1"
             android:dependency="preference_omt_streaming_enabled"
             />
 
         <EditTextPreference
             android:key="preference_omt_streaming_name"
             android:title="Stream Name"
-            android:summary="Name shown in receiver applications"
-            android:defaultValue="Open Camera"
+            android:summary="Leave empty for auto-generated unique name"
+            android:defaultValue=""
             android:dependency="preference_omt_streaming_enabled"
             />
 

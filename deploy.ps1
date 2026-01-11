@@ -1,10 +1,12 @@
 #!/usr/bin/env pwsh
 # deploy.ps1 - Quick build and deploy to connected device
-# Usage: .\deploy.ps1 [debug|release] [--launch]
+# Usage: .\deploy.ps1 [debug|release] [--clean] [--launch]
+#   --clean : Uninstall first (clears all app data including preferences)
 
 param(
     [string]$BuildType = "debug",
-    [switch]$Launch = $true
+    [switch]$Launch = $true,
+    [switch]$Clean = $false
 )
 
 $ErrorActionPreference = "Continue" # Don't stop on stderr warnings (like deprecation notes)
@@ -26,12 +28,17 @@ $packageName = "net.sourceforge.opencamera"
 $installed = & $adb shell pm list packages | Select-String $packageName
 
 if ($installed) {
-    Write-Host "`nExisting app detected, uninstalling..." -ForegroundColor Yellow
-    & $adb uninstall $packageName | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Old app uninstalled successfully" -ForegroundColor Green
+    if ($Clean) {
+        Write-Host "`nClean install requested - uninstalling existing app..." -ForegroundColor Yellow
+        & $adb uninstall $packageName | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Old app uninstalled (preferences cleared)" -ForegroundColor Green
+        } else {
+            Write-Host "Warning: Could not uninstall old app" -ForegroundColor Yellow
+        }
     } else {
-        Write-Host "Warning: Could not uninstall old app (continuing anyway)" -ForegroundColor Yellow
+        Write-Host "`nExisting app detected - will upgrade (preserving preferences)" -ForegroundColor Green
+        # NOTE: gradle installDebug will upgrade in place, preserving SharedPreferences
     }
 }
 

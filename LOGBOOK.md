@@ -340,12 +340,141 @@ private String getUniqueDeviceName() {
 
 ---
 
-## 10. Current Status
+## 10. Session: January 12, 2026 - Low-End Device Optimization
+
+### Issue 8: Frequent Frame Drops on Low-End Phone
+**Symptom**: TCL 6165H (budget phone) showed 22% frame drop rate, frequent "Broken pipe" disconnections, and ~105 Mbps bandwidth at 1080p30.
+
+**Root Cause**: Default quality was **MEDIUM** (Profile 166, ~105 Mbps), which exceeded the device's WiFi throughput capability and/or CPU encoding performance.
+
+**Investigation**:
+- Logs showed `Profile=166` (MEDIUM) being used even after user set "Low" in settings
+- Old app instance was still running with MEDIUM profile
+- MEDIUM quality requires ~100+ Mbps sustained throughput - too demanding for budget WiFi radios
+
+**Performance Comparison (1080p @ 30fps)**:
+| Profile | Bitrate | Frame Size | Drop Rate |
+|---------|---------|------------|-----------|
+| MEDIUM (166) | ~105 Mbps | ~440 KB | 22% |
+| LOW (133) | ~45 Mbps | ~188 KB | **0%** |
+
+**Fix 1 - Changed Default Quality to LOW**:
+
+`MyApplicationInterface.java`:
+```java
+public int getOmtStreamingQuality() {
+    // Default to LOW (1) for better compatibility with all devices and networks
+    // LOW: ~43 Mbps, MEDIUM: ~100 Mbps, HIGH: ~130 Mbps (at 1080p30)
+    String value = sharedPreferences.getString(PreferenceKeys.OmtStreamingQualityKey, "1");
+    try {
+        return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+        return 1; // Default to LOW for stability
+    }
+}
+```
+
+`preferences_sub_video.xml`:
+```xml
+<ListPreference
+    android:key="preference_omt_streaming_quality"
+    android:summary="Low recommended for WiFi stability"
+    android:defaultValue="1"
+    ... />
+```
+
+**Rationale**: LOW profile (VMX_PROFILE_OMT_LQ) provides:
+- ✅ Compatible with all WiFi networks (even 2.4GHz)
+- ✅ Works on budget phones with limited CPU
+- ✅ Still good visual quality (same codec, more compression)
+- ✅ Users can upgrade to MEDIUM/HIGH in settings if they have better hardware
+
+### Issue 9: mDNS Name Format Breaking Discovery
+**Symptom**: Device not discovered after preferences reset - name was "Open Camera" without parentheses.
+
+**Root Cause**: OMT protocol requires name format `MachineName (FriendlyName)` with parentheses for client validation.
+
+**Fix**: Ensure auto-generated names always use unique format with proper parentheses:
+- ✅ `6165H_2F3E (Camera)` - Valid format
+- ❌ `Open Camera` - Missing parentheses, fails OMT client validation
+
+---
+
+## 11. Quality Change Behavior
+
+### Can Quality Be Changed On-The-Fly?
+
+**No** - Quality (VMX profile) is set when the OMT sender is created.
+
+**How Quality is Applied**:
+1. `startAnnouncing()` creates OMT sender with current quality preference
+2. Quality is passed to native layer: `omt_send_create(name, quality)`
+3. VMX profile is determined in `OmtSenderContext` constructor
+4. Profile cannot be changed without destroying the sender
+
+**To Change Quality**:
+| Method | Steps | Quality Applied? |
+|--------|-------|------------------|
+| Toggle streaming | Stop → Change setting → Start | ❌ No (sender persists) |
+| Stop announcement | Stop → Change setting → Resume | ✅ Yes (new sender) |
+| **Restart app** | Force stop → Change setting → Launch | ✅ Yes (clean state) |
+
+**Recommended**: After changing quality in Settings, **force close the app** (`Settings → Apps → Open Camera → Force Stop`) and relaunch. This ensures the new quality is applied to the OMT sender.
+
+**Future Enhancement**: Could implement live quality switching by detecting preference changes and recreating the VMX encoder instance during streaming. This would require:
+1. Listen for `OnSharedPreferenceChangeListener` on quality key
+2. Destroy existing `VMX_INSTANCE`
+3. Create new instance with new profile
+4. Continue streaming with new bitrate
+
+### Issue 10: Preferences Not Persisting Across Deploys
+**Symptom**: Quality settings were reset to defaults after each code deployment.
+
+**Root Cause**: `deploy.ps1` was **uninstalling** the app before reinstalling, which cleared SharedPreferences.
+
+**Fix**: Modified `deploy.ps1` to upgrade in place instead of uninstall+reinstall:
+```powershell
+# Old behavior (line 29-35):
+& $adb uninstall $packageName  # ❌ Clears all data!
+
+# New behavior:
+# Just let gradle installDebug upgrade in place (preserves preferences)
+```
+
+**Deploy Commands**:
+```powershell
+.\deploy.ps1           # Upgrade - preserves preferences ✅
+.\deploy.ps1 -Clean    # Fresh install - clears all data (when needed)
+```
+
+### Issue 11: Stream Name Default Breaking Discovery
+**Symptom**: Default stream name "Open Camera" (without parentheses) caused some OMT clients to fail discovery validation.
+
+**Root Cause**: XML default `android:defaultValue="Open Camera"` was being used, which doesn't follow OMT format `Name (Source)`.
+
+**Fix**: Changed default to empty string so auto-generated unique name is used:
+```xml
+<!-- Old: -->
+<EditTextPreference android:defaultValue="Open Camera" ... />
+
+<!-- New: -->
+<EditTextPreference android:defaultValue="" ... />
+```
+
+**Result**: Empty default triggers auto-generated name like `RMX3867_3732 (Camera)` with:
+- Device model (`RMX3867`)
+- Unique 4-char ANDROID_ID suffix (`3732`)
+- Proper OMT format with parentheses
+
+---
+
+## 12. Current Status
 *   **Functional**: Streaming works at 720p, 1080p, and 4K resolutions
+*   **Default Quality**: LOW (43 Mbps) for maximum compatibility
 *   **mDNS**: Auto-announces when app starts (device immediately discoverable)
 *   **Device Naming**: Unique per-device identifiers using ANDROID_ID
 *   **Camera2**: Auto-switches from Camera1 to Camera2 API when needed
 *   **UI**: Dedicated button toggles streaming, frame drop warnings displayed
-*   **Stability**: No disconnections with adaptive buffer sizing
-*   **Performance**: 4K @ 30fps achieving ~144 Mbps throughput
+*   **Stability**: No disconnections with adaptive buffer sizing + LOW default
+*   **Performance**: Budget phones stable at LOW, high-end can use MEDIUM/HIGH
 *   **Monitoring**: Real-time frame drop tracking with UI feedback
