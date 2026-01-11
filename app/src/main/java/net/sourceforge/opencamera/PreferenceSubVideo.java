@@ -353,11 +353,43 @@ public class PreferenceSubVideo extends PreferenceSubScreen {
     }
 
     private void updateOmtNameSummary(EditTextPreference namePref, SharedPreferences sharedPreferences) {
-        String currentName = sharedPreferences.getString(PreferenceKeys.OmtStreamingNameKey, "Open Camera");
+        String currentName = sharedPreferences.getString(PreferenceKeys.OmtStreamingNameKey, null);
         if (currentName == null || currentName.isEmpty()) {
-            namePref.setSummary("Stream name (not set)");
+            // Show what the auto-generated name will be
+            String uniqueName = getUniqueDeviceName();
+            namePref.setSummary("Auto: " + uniqueName + " (Camera)");
         } else {
-            namePref.setSummary("Stream name: " + currentName);
+            namePref.setSummary("Custom: " + currentName);
         }
+    }
+    
+    /**
+     * Get unique device name: Model_XXXX (same logic as MyApplicationInterface).
+     * Uses ANDROID_ID for uniqueness across identical devices.
+     */
+    private String getUniqueDeviceName() {
+        String model = android.os.Build.MODEL;
+        
+        // Get unique Android ID
+        String androidId = null;
+        try {
+            androidId = android.provider.Settings.Secure.getString(
+                    getActivity().getContentResolver(),
+                    android.provider.Settings.Secure.ANDROID_ID
+            );
+        } catch (Exception e) {
+            // Ignore
+        }
+        
+        // Generate short unique suffix (first 4 chars of ANDROID_ID)
+        String uniqueSuffix = "";
+        if (androidId != null && androidId.length() >= 4) {
+            uniqueSuffix = "_" + androidId.substring(0, 4).toUpperCase();
+        }
+        
+        // Clean model name
+        String cleanModel = model.replaceAll("[^a-zA-Z0-9\\-]", "_").trim();
+        
+        return cleanModel + uniqueSuffix;
     }
 }

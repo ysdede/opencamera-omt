@@ -298,9 +298,52 @@ Added comprehensive frame drop tracking with UI feedback:
 
 ---
 
+### Feature: Unique Device Naming
+
+**Problem**: Hardcoded "Android (Camera)" name doesn't work when multiple phones are on the same network. Even using Build.MODEL fails with identical device models.
+
+**Solution**: Use ANDROID_ID to generate unique device identifiers.
+
+**Format**: `Model_XXXX (Camera)`
+- **Model**: Device model (e.g., "Pixel_6", "SM-G991B", "6165H")
+- **XXXX**: First 4 characters of ANDROID_ID (unique per device + app signing key)
+
+**Examples**:
+| Device | Broadcast Name |
+|--------|----------------|
+| TCL 6165H | `6165H_2F3E (Camera)` |
+| Pixel 6 #1 | `Pixel_6_A1B2 (Camera)` |
+| Pixel 6 #2 | `Pixel_6_E5F6 (Camera)` |
+
+**Implementation** (`MyApplicationInterface.java`):
+```java
+private String getUniqueDeviceName() {
+    String model = android.os.Build.MODEL;
+    String androidId = Settings.Secure.getString(
+            context.getContentResolver(),
+            Settings.Secure.ANDROID_ID
+    );
+    
+    String uniqueSuffix = "_" + androidId.substring(0, 4).toUpperCase();
+    String cleanModel = model.replaceAll("[^a-zA-Z0-9\\-]", "_");
+    
+    return cleanModel + uniqueSuffix;
+}
+```
+
+**Properties**:
+- ✅ Unique per device (ANDROID_ID is different on each phone)
+- ✅ Persistent (survives app reinstall)
+- ✅ No permissions required
+- ✅ Privacy compliant (scoped to app's signing key)
+- ✅ User can override with custom name in Settings
+
+---
+
 ## 10. Current Status
 *   **Functional**: Streaming works at 720p, 1080p, and 4K resolutions
 *   **mDNS**: Auto-announces when app starts (device immediately discoverable)
+*   **Device Naming**: Unique per-device identifiers using ANDROID_ID
 *   **Camera2**: Auto-switches from Camera1 to Camera2 API when needed
 *   **UI**: Dedicated button toggles streaming, frame drop warnings displayed
 *   **Stability**: No disconnections with adaptive buffer sizing
