@@ -24,3 +24,22 @@ testdata/
 
 local.properties
 uninstall.bat
+
+# OMT Integration - Build artifacts
+app/.cxx/
+
+# OMT Libraries - Build artifacts (keep source, ignore binaries)
+libomt/bin/
+libomt/obj/
+libomt/stub/*.so
+libvmx/bin/
+libvmx/obj/
+
+# Temporary/debug files
+current_ui.png
+ui_check.png
+opencameraabout.txt
+
+# Test pattern (large image, can be regenerated)
+FHD-1920x1080-Color-Bars-Vert-Cont.png
+app/src/main/res/drawable/test_pattern_1080p.png

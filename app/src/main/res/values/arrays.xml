@@ -1042,4 +1042,16 @@
         <item>preference_save_preshots_off</item>
         <item>preference_save_preshots_on</item>
     </string-array>
+    
+    <!-- OMT Streaming Quality -->
+    <string-array name="preference_omt_quality_entries">
+        <item>Low (~43 Mbps - Best for Wi-Fi)</item>
+        <item>Medium (~100 Mbps)</item>
+        <item>High (~130 Mbps - Wired/Wi-Fi 6)</item>
+    </string-array>
+    <string-array name="preference_omt_quality_values">
+        <item>1</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
 </resources>

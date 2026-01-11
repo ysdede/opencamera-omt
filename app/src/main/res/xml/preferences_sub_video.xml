@@ -168,4 +168,37 @@
 
     </PreferenceCategory>
 
+    <!-- OMT Network Streaming -->
+    <PreferenceCategory
+        android:key="preference_category_omt_streaming"
+        android:title="OMT Network Streaming"
+        >
+
+        <SwitchPreference
+            android:key="preference_omt_streaming_enabled"
+            android:title="Enable OMT Streaming"
+            android:summary="Stream video over network using Open Media Transport protocol"
+            android:defaultValue="true"
+            />
+
+        <ListPreference
+            android:key="preference_omt_streaming_quality"
+            android:title="Streaming Quality"
+            android:summary="Higher quality requires faster network"
+            android:entries="@array/preference_omt_quality_entries"
+            android:entryValues="@array/preference_omt_quality_values"
+            android:defaultValue="50"
+            android:dependency="preference_omt_streaming_enabled"
+            />
+
+        <EditTextPreference
+            android:key="preference_omt_streaming_name"
+            android:title="Stream Name"
+            android:summary="Name shown in receiver applications"
+            android:defaultValue="Open Camera"
+            android:dependency="preference_omt_streaming_enabled"
+            />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>
