@@ -201,4 +201,67 @@ Java_net_sourceforge_opencamera_OMTSender_nativeCleanup(
     g_height = 0;
 }
 
+// =============================================================
+// Statistics API (for UI feedback on frame drops)
+// =============================================================
+
+// External C functions from libomt
+extern int64_t omt_send_get_frames_sent(omt_send_t* instance);
+extern int64_t omt_send_get_frames_dropped(omt_send_t* instance);
+extern int64_t omt_send_get_recent_drops_and_reset(omt_send_t* instance);
+extern int64_t omt_send_get_bytes_sent(omt_send_t* instance);
+
+/**
+ * Get total frames sent since init.
+ */
+JNIEXPORT jlong JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeGetFramesSent(
+        JNIEnv* env,
+        jobject /* this */) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    if (g_sender == nullptr) return 0;
+    return (jlong)omt_send_get_frames_sent(g_sender);
+}
+
+/**
+ * Get total frames dropped since init.
+ */
+JNIEXPORT jlong JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeGetFramesDropped(
+        JNIEnv* env,
+        jobject /* this */) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    if (g_sender == nullptr) return 0;
+    return (jlong)omt_send_get_frames_dropped(g_sender);
+}
+
+/**
+ * Get recent drops and reset counter (for periodic UI updates).
+ * Returns the number of frames dropped since last call.
+ */
+JNIEXPORT jlong JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeGetRecentDropsAndReset(
+        JNIEnv* env,
+        jobject /* this */) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    if (g_sender == nullptr) return 0;
+    return (jlong)omt_send_get_recent_drops_and_reset(g_sender);
+}
+
+/**
+ * Get total bytes sent since init.
+ */
+JNIEXPORT jlong JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeGetBytesSent(
+        JNIEnv* env,
+        jobject /* this */) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    if (g_sender == nullptr) return 0;
+    return (jlong)omt_send_get_bytes_sent(g_sender);
+}
+
 } // extern "C"

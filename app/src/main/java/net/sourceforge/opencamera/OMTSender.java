@@ -152,6 +152,53 @@ public class OMTSender {
         }
     }
 
+    // =============================================================
+    // Statistics API (for monitoring and UI feedback)
+    // =============================================================
+
+    /**
+     * Get total frames sent since initialization.
+     */
+    public long getFramesSent() {
+        return isInitialized ? nativeGetFramesSent() : 0;
+    }
+
+    /**
+     * Get total frames dropped since initialization.
+     * Frames are dropped when the receiver can't keep up (network congestion).
+     */
+    public long getFramesDropped() {
+        return isInitialized ? nativeGetFramesDropped() : 0;
+    }
+
+    /**
+     * Get recent frame drops and reset the counter.
+     * Use this for periodic UI updates - call every second to get drops/second.
+     * 
+     * @return Number of frames dropped since last call
+     */
+    public long getRecentDropsAndReset() {
+        return isInitialized ? nativeGetRecentDropsAndReset() : 0;
+    }
+
+    /**
+     * Get total bytes sent since initialization.
+     */
+    public long getBytesSent() {
+        return isInitialized ? nativeGetBytesSent() : 0;
+    }
+
+    /**
+     * Get drop rate as percentage (0-100).
+     * @return Drop rate percentage, or 0 if no frames sent
+     */
+    public float getDropRatePercent() {
+        long sent = getFramesSent();
+        long dropped = getFramesDropped();
+        if (sent == 0) return 0f;
+        return (dropped * 100f) / sent;
+    }
+
     // Native method declarations
     private native boolean nativeInit(String name, int width, int height, int frameRateN, int frameRateD, int quality);
 
@@ -162,4 +209,10 @@ public class OMTSender {
     private native String nativeGetAddress();
 
     private native void nativeCleanup();
+
+    // Statistics native methods
+    private native long nativeGetFramesSent();
+    private native long nativeGetFramesDropped();
+    private native long nativeGetRecentDropsAndReset();
+    private native long nativeGetBytesSent();
 }

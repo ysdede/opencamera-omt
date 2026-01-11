@@ -61,22 +61,35 @@ public:
     struct sockaddr_in address;
     bool connected;
 
-    ClientConnection(int fd, struct sockaddr_in addr) : socketFd(fd), address(addr), connected(true) {
+    ClientConnection(int fd, struct sockaddr_in addr, int sendBufferSize = 512 * 1024) 
+        : socketFd(fd), address(addr), connected(true) {
         // Set non-blocking
         int flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
         
-        // Disable Nagle (TCP_NODELAY)
+        // Disable Nagle (TCP_NODELAY) - critical for low latency
         int one = 1;
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
         
-        // Increase send buffer
-        int sndbuf = 1024 * 1024; // 1MB
-        setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
+        // Set send buffer (adaptive or default)
+        setSendBuffer(sendBufferSize);
+        
+        // Enable TCP keepalive to detect dead connections
+        setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
         
         // Send OMTInfo Metadata to satisfy protocol handshake
         const char* infoXml = "<OMTInfo ProductName=\"OMT Android Sender\" Manufacturer=\"Open Media Transport\" Version=\"1.0\" />";
         SendMetadata(infoXml);
+    }
+    
+    void setSendBuffer(int size) {
+        setsockopt(socketFd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+        
+        // Get actual buffer size for logging
+        int actualBuf = 0;
+        socklen_t optlen = sizeof(actualBuf);
+        getsockopt(socketFd, SOL_SOCKET, SO_SNDBUF, &actualBuf, &optlen);
+        LOGI("Client SO_SNDBUF set to %d bytes (requested %d)", actualBuf, size);
     }
 
     ~ClientConnection() {
@@ -125,22 +138,33 @@ public:
         // Drain input logic to keep TCP window open
         DrainInput();
         
-        ssize_t sent = send(socketFd, data, length, MSG_NOSIGNAL);
-        if (sent < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                return false; // Drop frame
+        const uint8_t* ptr = (const uint8_t*)data;
+        size_t remaining = length;
+        
+        while (remaining > 0 && connected) {
+            ssize_t sent = send(socketFd, ptr, remaining, MSG_NOSIGNAL);
+            
+            if (sent > 0) {
+                ptr += sent;
+                remaining -= sent;
+            } else if (sent < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    // Buffer full - drop frame immediately, no retries
+                    return false;
+                }
+                // Real error - disconnect
+                LOGE("SendAll: socket error %d (%s), disconnecting", errno, strerror(errno));
+                connected = false;
+                return false;
+            } else {
+                // sent == 0 - connection closed
+                LOGI("SendAll: connection closed by peer");
+                connected = false;
+                return false;
             }
-            connected = false;
-            return false;
         }
         
-        if ((size_t)sent < length) {
-             // Partial write - drop connection
-             connected = false; 
-             return false;
-        }
-        
-        return true;
+        return remaining == 0;
     }
 };
 
@@ -153,12 +177,52 @@ public:
     std::atomic<bool> running;
     
     // VMX Codec
-    // VMX Codec
     VMX_INSTANCE* vmxInstance = nullptr;
     int width = 0;
     int height = 0;
     VMX_PROFILE profile = VMX_PROFILE_DEFAULT;
     std::vector<uint8_t> encodeBuffer;
+    
+    // Adaptive send buffer size (calculated from resolution + overhead)
+    std::atomic<int> optimalSendBuffer{512 * 1024}; // Default 512KB until we know frame size
+    
+    // Frame statistics (atomic for thread safety)
+    std::atomic<int64_t> totalFramesSent{0};
+    std::atomic<int64_t> totalFramesDropped{0};
+    std::atomic<int64_t> totalBytesSent{0};
+    std::atomic<int64_t> recentDrops{0};  // Drops in last reporting period
+    std::atomic<int64_t> lastStatsResetTime{0};
+    
+    // Calculate optimal buffer size: ~1.5x estimated max frame size
+    // VMX compression ratio is roughly 15-25% of raw YUV for HQ
+    static int calculateOptimalBuffer(int w, int h, VMX_PROFILE prof) {
+        // Raw YUV420 size = w * h * 1.5
+        int rawSize = w * h * 3 / 2;
+        
+        // Compression ratio depends on profile:
+        // HQ: ~20-25% of raw, SQ: ~15-18%, LQ: ~10-12%
+        float compressionRatio;
+        switch (prof) {
+            case VMX_PROFILE_OMT_HQ: compressionRatio = 0.25f; break;
+            case VMX_PROFILE_OMT_SQ: compressionRatio = 0.18f; break;
+            case VMX_PROFILE_OMT_LQ: compressionRatio = 0.12f; break;
+            default: compressionRatio = 0.20f; break;
+        }
+        
+        int estimatedFrameSize = (int)(rawSize * compressionRatio);
+        
+        // Buffer = 1.5x frame + overhead for headers
+        int bufferSize = (int)(estimatedFrameSize * 1.5f) + 4096;
+        
+        // Clamp to reasonable range: 256KB - 2MB
+        if (bufferSize < 256 * 1024) bufferSize = 256 * 1024;
+        if (bufferSize > 2 * 1024 * 1024) bufferSize = 2 * 1024 * 1024;
+        
+        LOGI("Adaptive buffer: %dx%d, profile=%d, estFrame=%dKB, buffer=%dKB",
+             w, h, (int)prof, estimatedFrameSize/1024, bufferSize/1024);
+        
+        return bufferSize;
+    }
 
     OmtSenderContext(int q) {
         running = true;
@@ -251,7 +315,8 @@ public:
 
             LOGI("New connection from %s:%d", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
             
-            ClientConnection* client = new ClientConnection(newsockfd, cli_addr);
+            // Use adaptive buffer size
+            ClientConnection* client = new ClientConnection(newsockfd, cli_addr, optimalSendBuffer.load());
             
             std::lock_guard<std::mutex> lock(clientsMutex);
             clients.push_back(client);
@@ -328,6 +393,18 @@ int omt_send(omt_send_t* instance, OMTMediaFrame* frame) {
         int max_size = frame->Width * frame->Height * 4;
         if (max_size < 1024*1024) max_size = 1024*1024;
         ctx->encodeBuffer.resize(max_size);
+        
+        // Calculate and apply optimal send buffer based on resolution
+        int newBuffer = OmtSenderContext::calculateOptimalBuffer(frame->Width, frame->Height, ctx->profile);
+        ctx->optimalSendBuffer = newBuffer;
+        
+        // Update existing clients with optimal buffer
+        {
+            std::lock_guard<std::mutex> lock(ctx->clientsMutex);
+            for (auto* c : ctx->clients) {
+                c->setSendBuffer(newBuffer);
+            }
+        }
     }
     
     // Encode Frame
@@ -403,6 +480,7 @@ int omt_send(omt_send_t* instance, OMTMediaFrame* frame) {
         extHeader.Flags = frame->Flags;
         extHeader.ColorSpace = frame->ColorSpace;
         
+        bool anyDropped = false;
         std::lock_guard<std::mutex> lock(ctx->clientsMutex);
         for (auto it = ctx->clients.begin(); it != ctx->clients.end(); ) {
             ClientConnection* c = *it;
@@ -413,13 +491,27 @@ int omt_send(omt_send_t* instance, OMTMediaFrame* frame) {
             
             if (!ok) {
                 if (!c->connected) {
+                     char clientIP[INET_ADDRSTRLEN];
+                     inet_ntop(AF_INET, &(c->address.sin_addr), clientIP, INET_ADDRSTRLEN);
+                     LOGI("Client disconnected: %s:%d (removing from list)", clientIP, ntohs(c->address.sin_port));
                      delete c;
                      it = ctx->clients.erase(it);
                      continue;
                 }
+                // Frame dropped but client still connected - track it
+                anyDropped = true;
+            } else {
+                ctx->totalBytesSent += encodedLen;
             }
             ++it;
         }
+        
+        ctx->totalFramesSent++;
+        if (anyDropped) {
+            ctx->totalFramesDropped++;
+            ctx->recentDrops++;
+        }
+        
         return encodedLen;
     }
 
@@ -447,5 +539,37 @@ int omt_settings_get_string(const char* name, char* value, int maxLength) { retu
 void omt_settings_set_string(const char* name, const char* value) {}
 int omt_settings_get_integer(const char* name) { return 0; }
 void omt_settings_set_integer(const char* name, int value) {}
+
+// =============================================================
+// Extended Statistics API (for UI feedback)
+// =============================================================
+
+// Get total frames sent
+int64_t omt_send_get_frames_sent(omt_send_t* instance) {
+    if (!instance) return 0;
+    OmtSenderContext* ctx = (OmtSenderContext*)instance;
+    return ctx->totalFramesSent.load();
+}
+
+// Get total frames dropped
+int64_t omt_send_get_frames_dropped(omt_send_t* instance) {
+    if (!instance) return 0;
+    OmtSenderContext* ctx = (OmtSenderContext*)instance;
+    return ctx->totalFramesDropped.load();
+}
+
+// Get recent drops and reset counter (for periodic UI updates)
+int64_t omt_send_get_recent_drops_and_reset(omt_send_t* instance) {
+    if (!instance) return 0;
+    OmtSenderContext* ctx = (OmtSenderContext*)instance;
+    return ctx->recentDrops.exchange(0);
+}
+
+// Get total bytes sent
+int64_t omt_send_get_bytes_sent(omt_send_t* instance) {
+    if (!instance) return 0;
+    OmtSenderContext* ctx = (OmtSenderContext*)instance;
+    return ctx->totalBytesSent.load();
+}
 
 }
