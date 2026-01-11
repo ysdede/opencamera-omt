@@ -2418,6 +2418,23 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
             }
         }
     }
+    
+    /**
+     * Update OMT status text with a custom message (e.g., for frame drop warnings).
+     */
+    private void updateOmtStatusText(String message) {
+        android.widget.TextView textView = findViewById(R.id.omt_status_text);
+        if (textView != null && message != null) {
+            textView.setVisibility(View.VISIBLE);
+            textView.setText(message);
+            // Auto-hide warning after 3 seconds by restoring normal status
+            textView.postDelayed(() -> {
+                if (omtStreamingManager != null && omtStreamingManager.isStreaming()) {
+                    updateOmtStreamingUI(true); // Restore normal status text
+                }
+            }, 3000);
+        }
+    }
 
     /**
      * Check if OMT streaming is currently active.
@@ -7027,6 +7044,21 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                     runOnUiThread(() -> {
                         if (MyDebug.LOG)
                             Log.d(TAG, "OMT connections: " + count);
+                    });
+                }
+                
+                @Override
+                public void onFramesDropped(long droppedCount, long totalDropped, long totalSent) {
+                    runOnUiThread(() -> {
+                        // Show warning toast about frame drops
+                        float dropRate = totalSent > 0 ? (totalDropped * 100f / totalSent) : 0f;
+                        String warning = getString(R.string.omt_frames_dropped, droppedCount, String.format("%.1f", dropRate));
+                        preview.showToast(null, warning, false);
+                        
+                        // Update status text if we have severe drops
+                        if (droppedCount > 5) {
+                            updateOmtStatusText("⚠ " + droppedCount + " frames dropped - network congestion");
+                        }
                     });
                 }
             });

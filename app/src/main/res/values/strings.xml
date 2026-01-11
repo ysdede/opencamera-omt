@@ -405,6 +405,7 @@
     <string name="omt_streaming_stopped">OMT streaming stopped</string>
     <string name="omt_streaming_failed">Failed to start OMT streaming</string>
     <string name="omt_streaming_connections">OMT Connections</string>
+    <string name="omt_frames_dropped">⚠ %1$d frames dropped (%2$s%% total)</string>
 
     <string name="capturing">Capturing…</string>
 

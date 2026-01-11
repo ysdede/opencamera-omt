@@ -46,6 +46,14 @@ public class OMTStreamingManager {
         void onStreamingError(String error);
 
         void onConnectionCountChanged(int count);
+        
+        /**
+         * Called when frames are being dropped due to network congestion.
+         * @param droppedCount Number of frames dropped in the last reporting period
+         * @param totalDropped Total frames dropped since streaming started
+         * @param totalSent Total frames sent since streaming started
+         */
+        void onFramesDropped(long droppedCount, long totalDropped, long totalSent);
     }
 
     private final Context context;
@@ -389,11 +397,27 @@ public class OMTStreamingManager {
                     return;
                 }
 
+                // Check connection count
                 int count = omtSender.getConnectionCount();
                 if (count != lastCount) {
                     lastCount = count;
                     if (callback != null) {
                         callback.onConnectionCountChanged(count);
+                    }
+                }
+                
+                // Check for frame drops (only while streaming)
+                if (isStreaming) {
+                    long recentDrops = omtSender.getRecentDropsAndReset();
+                    if (recentDrops > 0) {
+                        long totalDropped = omtSender.getFramesDropped();
+                        long totalSent = omtSender.getFramesSent();
+                        Log.w(TAG, "Frame drops detected: " + recentDrops + " in last second (total: " + 
+                              totalDropped + "/" + totalSent + ", " + 
+                              String.format("%.1f%%", omtSender.getDropRatePercent()) + " drop rate)");
+                        if (callback != null) {
+                            callback.onFramesDropped(recentDrops, totalDropped, totalSent);
+                        }
                     }
                 }
 
