@@ -116,6 +116,23 @@
         android:visibility="gone"
         />
 
+    <!-- OMT Network Streaming button -->
+    <ImageButton
+        android:id="@+id/omt_streaming"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:padding="10dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/omt_streaming"
+        app:srcCompat="@drawable/ic_videocam_white_48dp"
+        android:stateListAnimator="@animator/button_animation"
+        android:onClick="clickedOmtStreaming"
+        android:background="@drawable/circle_background"
+        android:backgroundTint="@color/icons_background_tint"
+        android:backgroundTintMode="src_in"
+        android:visibility="gone"
+        />
+
     <SeekBar
         android:id="@+id/zoom_seekbar"
         android:contentDescription="@string/zoom"
@@ -624,4 +641,21 @@
         android:importantForAccessibility="no"
         />
     
+    <TextView
+        android:id="@+id/omt_status_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="80dp"
+        android:text=""
+        android:textColor="#FFFF00"
+        android:textSize="14sp"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="1"
+        android:visibility="gone"
+        />
+
 </RelativeLayout>

@@ -1,39 +1,50 @@
 package net.sourceforge.opencamera;
 
-/** Stores all of the string keys used for SharedPreferences.
+/**
+ * Stores all of the string keys used for SharedPreferences.
  */
 public class PreferenceKeys {
     // must be static, to safely call from other Activities
 
-    /** If this preference is set, no longer show the intro dialog.
+    /**
+     * If this preference is set, no longer show the intro dialog.
      */
     public static final String FirstTimePreferenceKey = "done_first_time";
 
-    /** This preference stores the version number seen by the user - used to show "What's New" dialog.
+    /**
+     * This preference stores the version number seen by the user - used to show
+     * "What's New" dialog.
      */
     public static final String LatestVersionPreferenceKey = "latest_version";
 
-    /** This preference stores whether to allow showing the "What's New" dialog.
+    /**
+     * This preference stores whether to allow showing the "What's New" dialog.
      */
     public static final String ShowWhatsNewPreferenceKey = "preference_show_whats_new";
 
-    /** If this preference is set, no longer show the auto-stabilise info dialog.
+    /**
+     * If this preference is set, no longer show the auto-stabilise info dialog.
      */
     public static final String AutoStabiliseInfoPreferenceKey = "done_auto_stabilise_info";
 
-    /** If this preference is set, no longer show the HDR info dialog.
+    /**
+     * If this preference is set, no longer show the HDR info dialog.
      */
     public static final String HDRInfoPreferenceKey = "done_hdr_info";
 
-    /** If this preference is set, no longer show the Panorama info dialog.
+    /**
+     * If this preference is set, no longer show the Panorama info dialog.
      */
     public static final String PanoramaInfoPreferenceKey = "done_panorama_info";
 
-    /** If this preference is set, no longer show the raw info dialog.
+    /**
+     * If this preference is set, no longer show the raw info dialog.
      */
     public static final String RawInfoPreferenceKey = "done_raw_info";
 
-    /** If this preference is set, no longer show the dialog for poor magnetic accuracy
+    /**
+     * If this preference is set, no longer show the dialog for poor magnetic
+     * accuracy
      */
     public static final String MagneticAccuracyPreferenceKey = "done_magnetic_accuracy";
 
@@ -41,13 +52,14 @@ public class PreferenceKeys {
     public static final String CameraAPIPreferenceKey = "preference_camera_api";
 
     private static String getCameraIDKey(int cameraId, String cameraIdSPhysical) {
-        if( cameraIdSPhysical != null )
+        if (cameraIdSPhysical != null)
             return cameraId + "_" + cameraIdSPhysical;
         else
             return String.valueOf(cameraId);
     }
 
-    // don't set to be specific for physical cameras, as too confusing to have lots of different flash preferences
+    // don't set to be specific for physical cameras, as too confusing to have lots
+    // of different flash preferences
     // also in Preview, we don't save the flash back if not supported
     public static String getFlashPreferenceKey(int cameraId) {
         return "flash_value_" + cameraId;
@@ -87,7 +99,16 @@ public class PreferenceKeys {
 
     public static final String EdgeModePreferenceKey = "preference_edge_mode";
 
-    public static final String CameraNoiseReductionModePreferenceKey = "preference_noise_reduction_mode"; // n.b., this is for the Camera driver noise reduction mode, not Open Camera's NR photo mode
+    public static final String CameraNoiseReductionModePreferenceKey = "preference_noise_reduction_mode"; // n.b., this
+                                                                                                          // is for the
+                                                                                                          // Camera
+                                                                                                          // driver
+                                                                                                          // noise
+                                                                                                          // reduction
+                                                                                                          // mode, not
+                                                                                                          // Open
+                                                                                                          // Camera's NR
+                                                                                                          // photo mode
 
     public static final String ISOPreferenceKey = "preference_iso";
 
@@ -159,7 +180,8 @@ public class PreferenceKeys {
 
     public static final String StampGPSFormatPreferenceKey = "preference_stamp_gpsformat";
 
-    //public static final String StampGeoAddressPreferenceKey = "preference_stamp_geo_address";
+    // public static final String StampGeoAddressPreferenceKey =
+    // "preference_stamp_geo_address";
 
     public static final String UnitsDistancePreferenceKey = "preference_units_distance";
 
@@ -183,7 +205,8 @@ public class PreferenceKeys {
 
     public static final String WaterType = "preference_water_type";
 
-    //public static final String BackgroundPhotoSavingPreferenceKey = "preference_background_photo_saving";
+    // public static final String BackgroundPhotoSavingPreferenceKey =
+    // "preference_background_photo_saving";
 
     public static final String Camera2FakeFlashPreferenceKey = "preference_camera2_fake_flash";
 
@@ -326,9 +349,11 @@ public class PreferenceKeys {
     public static final String VideoBitratePreferenceKey = "preference_video_bitrate";
 
     public static String getVideoFPSPreferenceKey(int cameraId, String cameraIdSPhysical) {
-        // for cameraId==0 and cameraIdSPhysical==null, we return preference_video_fps instead of preference_video_fps_0, for
+        // for cameraId==0 and cameraIdSPhysical==null, we return preference_video_fps
+        // instead of preference_video_fps_0, for
         // backwards compatibility for people upgrading
-        return "preference_video_fps" + ((cameraId==0 && cameraIdSPhysical==null) ? "" : ("_"+getCameraIDKey(cameraId, cameraIdSPhysical)));
+        return "preference_video_fps" + ((cameraId == 0 && cameraIdSPhysical == null) ? ""
+                : ("_" + getCameraIDKey(cameraId, cameraIdSPhysical)));
     }
 
     public static String getVideoCaptureRatePreferenceKey(int cameraId, String cameraIdSPhysical) {
@@ -371,8 +396,10 @@ public class PreferenceKeys {
 
     public static final String TimerSpeakPreferenceKey = "preference_timer_speak";
 
-    // note for historical reasons the preference refers to burst; the feature was renamed to
-    // "repeat" in v1.43, but we still need to use the old string to avoid changing user settings
+    // note for historical reasons the preference refers to burst; the feature was
+    // renamed to
+    // "repeat" in v1.43, but we still need to use the old string to avoid changing
+    // user settings
     // when people upgrade
     public static final String RepeatModePreferenceKey = "preference_burst_mode";
 
@@ -382,5 +409,11 @@ public class PreferenceKeys {
     public static final String ShutterSoundPreferenceKey = "preference_shutter_sound";
 
     public static final String ImmersiveModePreferenceKey = "preference_immersive_mode";
-    public static final String AddYPRToComments="preference_comment_ypr";
+    public static final String AddYPRToComments = "preference_comment_ypr";
+
+    // OMT Streaming Preferences
+    public static final String OmtStreamingEnabledKey = "preference_omt_streaming_enabled";
+    public static final String OmtStreamingQualityKey = "preference_omt_streaming_quality";
+    public static final String OmtStreamingNameKey = "preference_omt_streaming_name";
+    public static final String OmtAutoStartKey = "preference_omt_auto_start";
 }

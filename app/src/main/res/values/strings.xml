@@ -397,6 +397,15 @@
     <string name="pause_video">Pause video recording</string>
     <string name="resume_video">Resume video recording</string>
 
+    <!-- OMT Network Streaming -->
+    <string name="omt_streaming">OMT Network Streaming</string>
+    <string name="omt_streaming_start">Start OMT Streaming</string>
+    <string name="omt_streaming_stop">Stop OMT Streaming</string>
+    <string name="omt_streaming_started">OMT streaming started</string>
+    <string name="omt_streaming_stopped">OMT streaming stopped</string>
+    <string name="omt_streaming_failed">Failed to start OMT streaming</string>
+    <string name="omt_streaming_connections">OMT Connections</string>
+
     <string name="capturing">Capturing…</string>
 
     <string name="audio_listener_failed">Failed to initalise audio listening</string>
