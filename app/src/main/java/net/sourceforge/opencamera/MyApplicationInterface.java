@@ -1194,11 +1194,20 @@ public class MyApplicationInterface extends BasicApplicationInterface {
      * @return Quality value: 1=Low, 50=Medium, 100=High
      */
     public int getOmtStreamingQuality() {
-        String value = sharedPreferences.getString(PreferenceKeys.OmtStreamingQualityKey, "50");
+        // Default to LOW (1) for better compatibility with all devices and networks
+        // LOW: ~43 Mbps, MEDIUM: ~100 Mbps, HIGH: ~130 Mbps (at 1080p30)
+        String value = sharedPreferences.getString(PreferenceKeys.OmtStreamingQualityKey, "1");
+        if (MyDebug.LOG)
+            Log.d("OMTQuality", "getOmtStreamingQuality: raw value from prefs = '" + value + "'");
         try {
-            return Integer.parseInt(value);
+            int quality = Integer.parseInt(value);
+            if (MyDebug.LOG)
+                Log.d("OMTQuality", "getOmtStreamingQuality: returning " + quality);
+            return quality;
         } catch (NumberFormatException e) {
-            return 50; // Default to medium
+            if (MyDebug.LOG)
+                Log.e("OMTQuality", "getOmtStreamingQuality: parse error, returning default 1");
+            return 1; // Default to LOW for stability
         }
     }
 
