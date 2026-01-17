@@ -83,6 +83,16 @@ public class OMTSender {
     }
 
     /**
+     * Set additional sender information (e.g. device model).
+     * Must be called after init().
+     */
+    public void setSenderInfo(String productName, String manufacturer) {
+        if (isInitialized) {
+            nativeSetSenderInfo(productName, manufacturer);
+        }
+    }
+
+    /**
      * Initialize with default quality (MEDIUM).
      */
     public boolean init(String name, int width, int height, int frameRate) {
@@ -152,6 +162,17 @@ public class OMTSender {
         }
     }
 
+    /**
+     * Set the current VMX quality level on the fly.
+     * 
+     * @param quality Video quality (0=Default, 1=Low, 50=Medium, 100=High)
+     */
+    public void setQuality(int quality) {
+        if (isInitialized) {
+            nativeSetQuality(quality);
+        }
+    }
+
     // =============================================================
     // Statistics API (for monitoring and UI feedback)
     // =============================================================
@@ -190,12 +211,14 @@ public class OMTSender {
 
     /**
      * Get drop rate as percentage (0-100).
+     * 
      * @return Drop rate percentage, or 0 if no frames sent
      */
     public float getDropRatePercent() {
         long sent = getFramesSent();
         long dropped = getFramesDropped();
-        if (sent == 0) return 0f;
+        if (sent == 0)
+            return 0f;
         return (dropped * 100f) / sent;
     }
 
@@ -208,11 +231,27 @@ public class OMTSender {
 
     private native String nativeGetAddress();
 
+    private native void nativeSetSenderInfo(String productName, String manufacturer);
+
     private native void nativeCleanup();
 
     // Statistics native methods
     private native long nativeGetFramesSent();
+
     private native long nativeGetFramesDropped();
+
     private native long nativeGetRecentDropsAndReset();
+
     private native long nativeGetBytesSent();
+
+    private native void nativeSetQuality(int quality);
+
+    private native int nativeGetProfile();
+
+    /**
+     * Get the current VMX profile ID.
+     */
+    public int getProfile() {
+        return isInitialized ? nativeGetProfile() : 0;
+    }
 }
