@@ -34,6 +34,7 @@ import java.nio.ByteBuffer;
  */
 public class OMTStreamingManager {
     private static final String TAG = "OMTStreamingManager";
+    private static final boolean DEBUG_LOGS = false; // Set to true for debugging
 
     // Callback interface for streaming events
     public interface StreamingCallback {
@@ -46,12 +47,18 @@ public class OMTStreamingManager {
         void onStreamingError(String error);
 
         void onConnectionCountChanged(int count);
-        
+
+        /**
+         * Called when the VMX quality profile changes dynamically.
+         */
+        void onQualityChanged(int profile);
+
         /**
          * Called when frames are being dropped due to network congestion.
+         * 
          * @param droppedCount Number of frames dropped in the last reporting period
          * @param totalDropped Total frames dropped since streaming started
-         * @param totalSent Total frames sent since streaming started
+         * @param totalSent    Total frames sent since streaming started
          */
         void onFramesDropped(long droppedCount, long totalDropped, long totalSent);
     }
@@ -64,8 +71,8 @@ public class OMTStreamingManager {
     private Handler backgroundHandler;
 
     private ByteBuffer frameBuffer;
-    private boolean isAnnouncing = false;  // mDNS is active, device is discoverable
-    private boolean isStreaming = false;   // Camera frames are being sent
+    private boolean isAnnouncing = false; // mDNS is active, device is discoverable
+    private boolean isStreaming = false; // Camera frames are being sent
 
     // Streaming parameters
     private int streamWidth;
@@ -128,9 +135,12 @@ public class OMTStreamingManager {
                 return false;
             }
 
+            // Set device information for handshake
+            omtSender.setSenderInfo(android.os.Build.MODEL, android.os.Build.MANUFACTURER);
+
             // Register mDNS service (with frequent announcements)
             registerService(6400, name);
-            
+
             isAnnouncing = true;
             Log.i(TAG, "OMT announcement started - device is now discoverable");
 
@@ -277,16 +287,32 @@ public class OMTStreamingManager {
         return omtSender != null ? omtSender.getAddress() : null;
     }
 
+    /**
+     * Get the current VMX profile ID.
+     */
+    public int getProfile() {
+        return omtSender != null ? omtSender.getProfile() : 0;
+    }
+
+    /**
+     * Update the current VMX quality level on the fly.
+     */
+    public void setQuality(int quality) {
+        if (omtSender != null) {
+            omtSender.setQuality(quality);
+        }
+    }
+
     // ImageReader listener - processes each available frame
     private int frameCount = 0;
     private final ImageReader.OnImageAvailableListener imageListener = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
             frameCount++;
-            if (frameCount % 30 == 1) {
+            if (DEBUG_LOGS && frameCount % 30 == 1) {
                 Log.d(TAG, "onImageAvailable called, frame #" + frameCount + ", isStreaming=" + isStreaming);
             }
-            
+
             if (!isStreaming || omtSender == null) {
                 // Drain the queue to prevent backpressure
                 Image image = reader.acquireLatestImage();
@@ -315,6 +341,7 @@ public class OMTStreamingManager {
      * Converts YUV_420_888 format to the NV12 format expected by OMT.
      */
     private int sentFrameCount = 0;
+
     private void sendFrame(Image image) {
         if (omtSender == null || !isStreaming) {
             return;
@@ -329,11 +356,11 @@ public class OMTStreamingManager {
         int ySize = yStride * image.getHeight();
         int uvSize = uvStride * (image.getHeight() / 2);
         int totalSize = ySize + uvSize;
-        
+
         sentFrameCount++;
-        if (sentFrameCount % 30 == 1) {
-            Log.d(TAG, "sendFrame #" + sentFrameCount + ": " + image.getWidth() + "x" + image.getHeight() + 
-                       ", yStride=" + yStride + ", uvStride=" + uvStride + ", totalSize=" + totalSize);
+        if (DEBUG_LOGS && sentFrameCount % 30 == 1) {
+            Log.d(TAG, "sendFrame #" + sentFrameCount + ": " + image.getWidth() + "x" + image.getHeight() +
+                    ", yStride=" + yStride + ", uvStride=" + uvStride + ", totalSize=" + totalSize);
         }
 
         // Allocate or resize frame buffer if needed
@@ -389,6 +416,7 @@ public class OMTStreamingManager {
 
         backgroundHandler.post(new Runnable() {
             private int lastCount = -1;
+            private int lastProfile = -1;
 
             @Override
             public void run() {
@@ -405,16 +433,27 @@ public class OMTStreamingManager {
                         callback.onConnectionCountChanged(count);
                     }
                 }
-                
+
+                // Check for quality changes
+                int currentProfile = omtSender.getProfile();
+                if (currentProfile != lastProfile) {
+                    if (lastProfile != -1) { // Only notify if it's a change, not the first check
+                        if (callback != null) {
+                            callback.onQualityChanged(currentProfile);
+                        }
+                    }
+                    lastProfile = currentProfile;
+                }
+
                 // Check for frame drops (only while streaming)
                 if (isStreaming) {
                     long recentDrops = omtSender.getRecentDropsAndReset();
                     if (recentDrops > 0) {
                         long totalDropped = omtSender.getFramesDropped();
                         long totalSent = omtSender.getFramesSent();
-                        Log.w(TAG, "Frame drops detected: " + recentDrops + " in last second (total: " + 
-                              totalDropped + "/" + totalSent + ", " + 
-                              String.format("%.1f%%", omtSender.getDropRatePercent()) + " drop rate)");
+                        Log.w(TAG, "Frame drops detected: " + recentDrops + " in last second (total: " +
+                                totalDropped + "/" + totalSent + ", " +
+                                String.format("%.1f%%", omtSender.getDropRatePercent()) + " drop rate)");
                         if (callback != null) {
                             callback.onFramesDropped(recentDrops, totalDropped, totalSent);
                         }

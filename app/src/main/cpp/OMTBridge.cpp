@@ -17,7 +17,12 @@
 #define LOG_TAG "OMTBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+#ifndef NDEBUG
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#else
+#define LOGD(...) ((void)0)
+#endif
 
 // Global sender instance (thread-safe access)
 static omt_send_t* g_sender = nullptr;
@@ -210,6 +215,50 @@ extern int64_t omt_send_get_frames_sent(omt_send_t* instance);
 extern int64_t omt_send_get_frames_dropped(omt_send_t* instance);
 extern int64_t omt_send_get_recent_drops_and_reset(omt_send_t* instance);
 extern int64_t omt_send_get_bytes_sent(omt_send_t* instance);
+// Custom helper
+extern void omt_send_set_info_str(omt_send_t* instance, const char* product, const char* manufacturer);
+extern void omt_send_set_quality(omt_send_t* instance, OMTQuality quality);
+
+/**
+ * Set the current VMX quality level.
+ */
+JNIEXPORT void JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeSetQuality(
+        JNIEnv* env,
+        jobject /* this */,
+        jint quality) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    if (g_sender == nullptr) return;
+    
+    LOGI("JNI: Setting OMT quality to %d", quality);
+    omt_send_set_quality(g_sender, (OMTQuality)quality);
+}
+
+/**
+ * Set sender information (product, manufacturer).
+ */
+JNIEXPORT void JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeSetSenderInfo(
+        JNIEnv* env,
+        jobject /* this */,
+        jstring productName,
+        jstring manufacturer) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    
+    if (g_sender == nullptr) return;
+    
+    const char* productStr = env->GetStringUTFChars(productName, nullptr);
+    const char* mfgStr = env->GetStringUTFChars(manufacturer, nullptr);
+    
+    if (productStr && mfgStr) {
+        omt_send_set_info_str(g_sender, productStr, mfgStr);
+    }
+    
+    if (productStr) env->ReleaseStringUTFChars(productName, productStr);
+    if (mfgStr) env->ReleaseStringUTFChars(manufacturer, mfgStr);
+}
 
 /**
  * Get total frames sent since init.
@@ -262,6 +311,21 @@ Java_net_sourceforge_opencamera_OMTSender_nativeGetBytesSent(
     std::lock_guard<std::mutex> lock(g_senderMutex);
     if (g_sender == nullptr) return 0;
     return (jlong)omt_send_get_bytes_sent(g_sender);
+}
+
+extern int omt_send_get_profile(omt_send_t* instance);
+
+/**
+ * Get current VMX profile ID.
+ */
+JNIEXPORT jint JNICALL
+Java_net_sourceforge_opencamera_OMTSender_nativeGetProfile(
+        JNIEnv* env,
+        jobject /* this */) {
+    
+    std::lock_guard<std::mutex> lock(g_senderMutex);
+    if (g_sender == nullptr) return 0;
+    return omt_send_get_profile(g_sender);
 }
 
 } // extern "C"

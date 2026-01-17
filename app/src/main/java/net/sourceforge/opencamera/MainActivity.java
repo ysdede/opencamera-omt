@@ -2322,7 +2322,8 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
         if (!preview.usingCamera2API()) {
             Log.w(TAG, "OMT streaming requires Camera2 API - switching...");
             if (!supportsCamera2()) {
-                preview.showToast(null, "OMT streaming requires Camera2 API which is not supported on this device", true);
+                preview.showToast(null, "OMT streaming requires Camera2 API which is not supported on this device",
+                        true);
                 return;
             }
             // Switch to Camera2 API and restart
@@ -2351,11 +2352,12 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
 
         // Ensure streaming manager exists (may have been created by auto-announcement)
         if (omtStreamingManager == null) {
-            startOmtAnnouncement();  // This creates the manager
+            startOmtAnnouncement(); // This creates the manager
         }
 
         // Start streaming (will use existing announcement if available)
-        if (omtStreamingManager != null && !omtStreamingManager.startStreaming(width, height, fps, quality, streamName)) {
+        if (omtStreamingManager != null
+                && !omtStreamingManager.startStreaming(width, height, fps, quality, streamName)) {
             preview.showToast(null, R.string.omt_streaming_failed, true);
         } else if (omtStreamingManager != null) {
             preview.setOmtStreamingSurface(omtStreamingManager.getStreamingSurface());
@@ -2405,9 +2407,14 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                     int width = profile.videoFrameWidth;
                     int height = profile.videoFrameHeight;
                     int fps = profile.videoCaptureRate > 0 ? (int) profile.videoCaptureRate : 30;
-                    int quality = applicationInterface.getOmtStreamingQuality();
 
-                    String text = "VMX: " + quality + " | " + width + "x" + height + " | " + fps + "fps";
+                    // Get real-time profile from sender
+                    int profileId = omtStreamingManager.getProfile();
+                    String qualityLabel = getOmtProfileDisplayName(profileId);
+                    String bandwidth = getOmtEstimatedBandwidth(width, height, fps, profileId);
+
+                    String text = "VMX: " + qualityLabel + " | " + width + "x" + height + " | " + fps + "fps | ~"
+                            + bandwidth;
                     textView.setText(text);
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to get video profile for OMT stats", e);
@@ -2418,7 +2425,73 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
             }
         }
     }
-    
+
+    /**
+     * Map internal VMX profile ID to user-friendly quality label.
+     */
+    private String getOmtProfileDisplayName(int profileId) {
+        switch (profileId) {
+            case 133:
+            case 33:
+                return "LQ";
+            case 166:
+            case 66:
+                return "SQ";
+            case 199:
+            case 99:
+                return "HQ";
+            default:
+                return "??";
+        }
+    }
+
+    /**
+     * Estimated bandwidth based on official VMX specification table.
+     */
+    private String getOmtEstimatedBandwidth(int width, int height, int fps, int profileId) {
+        // Base 60fps bandwidth values in Mbps (from official table)
+        // [LQ, SQ, HQ]
+        float[] b2160 = { 200f, 300f, 600f };
+        float[] b1080 = { 86f, 200f, 260f };
+        float[] b720 = { 45f, 68f, 136f };
+
+        float[] selectedBase;
+        if (height >= 2160)
+            selectedBase = b2160;
+        else if (height >= 1080)
+            selectedBase = b1080;
+        else
+            selectedBase = b720;
+
+        int qualityIndex;
+        switch (profileId) {
+            case 133:
+            case 33:
+                qualityIndex = 0;
+                break;
+            case 166:
+            case 66:
+                qualityIndex = 1;
+                break;
+            case 199:
+            case 99:
+                qualityIndex = 2;
+                break;
+            default:
+                qualityIndex = 1;
+                break; // Default to Medium/SQ
+        }
+
+        float baseMbps = selectedBase[qualityIndex];
+        float estimatedMbps = baseMbps * (fps / 60.0f);
+
+        if (estimatedMbps >= 1.0f) {
+            return String.format(java.util.Locale.US, "%.1f Mbps", estimatedMbps);
+        } else {
+            return String.format(java.util.Locale.US, "%d Kbps", (int) (estimatedMbps * 1024));
+        }
+    }
+
     /**
      * Update OMT status text with a custom message (e.g., for frame drop warnings).
      */
@@ -3472,6 +3545,20 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                     boolean wt = sharedPreferences.getBoolean(PreferenceKeys.WaterType, true);
                     mWaterDensity = wt ? WATER_DENSITY_SALTWATER : WATER_DENSITY_FRESHWATER;
                     break;
+                case PreferenceKeys.OmtStreamingQualityKey:
+                    if (omtStreamingManager != null && omtStreamingManager.isStreaming()) {
+                        try {
+                            String qualityStr = sharedPreferences.getString(PreferenceKeys.OmtStreamingQualityKey,
+                                    "50");
+                            int quality = Integer.parseInt(qualityStr);
+                            omtStreamingManager.setQuality(quality);
+                            if (MyDebug.LOG)
+                                Log.d(TAG, "Updated OMT quality on the fly: " + quality);
+                        } catch (NumberFormatException e) {
+                            Log.e(TAG, "Failed to parse OMT quality preference", e);
+                        }
+                    }
+                    break;
                 default:
                     if (MyDebug.LOG)
                         Log.d(TAG, "this change does require update");
@@ -3893,7 +3980,7 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
 
         // update camera for changes made in prefs - do this without closing and
         // reopening the camera app if possible for speed!
-        // but need workaround for Nexus 7 bug on old camera API, where scene mode
+        // but need workaround for bug on Nexus 7 with old camera API, where scene mode
         // doesn't take effect unless the camera is restarted - I can reproduce this
         // with other 3rd party camera apps, so may be a Nexus 7 issue...
         // doesn't happen if we allow using Camera2 API on Nexus 7, but reopen for
@@ -6933,19 +7020,20 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
      */
     private boolean omtAnnouncementStarted = false;
     private boolean omtSwitchingToCamera2 = false;
+
     private void autoStartOmtAnnouncement() {
         if (omtAnnouncementStarted || omtSwitchingToCamera2) {
             return; // Already started or switching, don't do it again
         }
-        
+
         // Check if OMT is enabled
         boolean omtEnabled = applicationInterface.getOmtStreamingEnabled();
-        
+
         if (MyDebug.LOG) {
-            Log.d(TAG, "autoStartOmtAnnouncement: omtEnabled=" + omtEnabled + 
-                       ", usingCamera2=" + preview.usingCamera2API());
+            Log.d(TAG, "autoStartOmtAnnouncement: omtEnabled=" + omtEnabled +
+                    ", usingCamera2=" + preview.usingCamera2API());
         }
-        
+
         if (omtEnabled) {
             // If not using Camera2 API, switch to it first (needed for streaming later)
             if (!preview.usingCamera2API()) {
@@ -6962,18 +7050,18 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                 }
                 return;
             }
-            
+
             if (MyDebug.LOG)
                 Log.d(TAG, "Auto-starting OMT mDNS announcement");
             omtAnnouncementStarted = true;
-            
+
             // Delay slightly to ensure camera is fully ready
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 startOmtAnnouncement();
             }, 500);
         }
     }
-    
+
     /**
      * Start OMT mDNS announcement only (device becomes discoverable).
      * Video streaming will start when user clicks the OMT button.
@@ -6981,27 +7069,27 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
     private void startOmtAnnouncement() {
         if (MyDebug.LOG)
             Log.d(TAG, "startOmtAnnouncement");
-        
+
         if (omtStreamingManager != null && omtStreamingManager.isAnnouncing()) {
             if (MyDebug.LOG)
                 Log.d(TAG, "Already announcing");
             return;
         }
-        
+
         // Get streaming settings for announcement
         String streamName = applicationInterface.getOmtStreamingName();
         int quality = applicationInterface.getOmtStreamingQuality();
-        
+
         // Get current video profile for resolution info
         VideoProfile profile = preview.getVideoProfile();
         int width = profile.videoFrameWidth;
         int height = profile.videoFrameHeight;
         int fps = profile.videoCaptureRate > 0 ? (int) profile.videoCaptureRate : 30;
-        
+
         if (MyDebug.LOG) {
             Log.d(TAG, "OMT announcement: " + streamName + " (" + width + "x" + height + "@" + fps + "fps)");
         }
-        
+
         // Create streaming manager if needed
         if (omtStreamingManager == null) {
             omtStreamingManager = new OMTStreamingManager(this, new OMTStreamingManager.StreamingCallback() {
@@ -7014,7 +7102,7 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                         updateOmtStreamingUI(false);
                     });
                 }
-                
+
                 @Override
                 public void onStreamingStarted() {
                     runOnUiThread(() -> {
@@ -7042,19 +7130,30 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                 @Override
                 public void onConnectionCountChanged(int count) {
                     runOnUiThread(() -> {
-                        if (MyDebug.LOG)
-                            Log.d(TAG, "OMT connections: " + count);
+                        // Update connection count in status text if needed
+                        if (isOmtStreaming()) {
+                            updateOmtStreamingUI(true);
+                        }
                     });
                 }
-                
+
+                @Override
+                public void onQualityChanged(int profile) {
+                    runOnUiThread(() -> {
+                        String preset = getOmtProfileDisplayName(profile);
+                        updateOmtStatusText("Quality Adjusted: VMX " + preset);
+                    });
+                }
+
                 @Override
                 public void onFramesDropped(long droppedCount, long totalDropped, long totalSent) {
                     runOnUiThread(() -> {
                         // Show warning toast about frame drops
                         float dropRate = totalSent > 0 ? (totalDropped * 100f / totalSent) : 0f;
-                        String warning = getString(R.string.omt_frames_dropped, droppedCount, String.format("%.1f", dropRate));
+                        String warning = getString(R.string.omt_frames_dropped, droppedCount,
+                                String.format("%.1f", dropRate));
                         preview.showToast(null, warning, false);
-                        
+
                         // Update status text if we have severe drops
                         if (droppedCount > 5) {
                             updateOmtStatusText("⚠ " + droppedCount + " frames dropped - network congestion");
@@ -7063,7 +7162,7 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                 }
             });
         }
-        
+
         // Start announcement only (no video streaming yet)
         omtStreamingManager.startAnnouncing(width, height, fps, quality, streamName);
     }

@@ -42,19 +42,24 @@ target_link_libraries(vmx
     log
 )
 
-# Build libomt from source
+# Build libomt from source (modular C++ implementation)
+# Ported from libomtnet with proper separation of concerns
 add_library(omt SHARED
-    ${LIBOMT_DIR}/stub/libomt_android.cpp
+    ${LIBOMT_DIR}/cpp/libomt_android.cpp
+    ${LIBOMT_DIR}/cpp/OMTAsyncPool.cpp
+    ${LIBOMT_DIR}/cpp/OMTChannel.cpp
+    ${LIBOMT_DIR}/cpp/OMTSender.cpp
+    ${LIBOMT_DIR}/cpp/OMTDiscovery.cpp
 )
 
 # Include directories for libomt compilation
 target_include_directories(omt PRIVATE 
-    ${LIBOMT_DIR}/stub
+    ${LIBOMT_DIR}/cpp
     ${LIBOMT_DIR}
     ${LIBVMX_DIR}/src
 )
 
-# Same flags for libomt
+# Compiler flags for libomt
 target_compile_options(omt PRIVATE 
     -O3
     -fPIC
@@ -63,6 +68,7 @@ target_compile_options(omt PRIVATE
     -fms-extensions 
     -fdeclspec
     -Wno-macro-redefined
+    -std=c++17
 )
 
 # Link libomt against vmx and Android libs
