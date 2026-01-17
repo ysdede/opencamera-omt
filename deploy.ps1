@@ -24,7 +24,7 @@ if (-not $devices) {
 Write-Host "Device: Connected" -ForegroundColor Green
 
 # Check if app is already installed
-$packageName = "net.sourceforge.opencamera"
+$packageName = "io.github.ysdede.opencameraomt"
 $installed = & $adb shell pm list packages | Select-String $packageName
 
 if ($installed) {
@@ -33,10 +33,12 @@ if ($installed) {
         & $adb uninstall $packageName | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Old app uninstalled (preferences cleared)" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "Warning: Could not uninstall old app" -ForegroundColor Yellow
         }
-    } else {
+    }
+    else {
         Write-Host "`nExisting app detected - will upgrade (preserving preferences)" -ForegroundColor Green
         # NOTE: gradle installDebug will upgrade in place, preserving SharedPreferences
     }
@@ -51,7 +53,8 @@ $startTime = Get-Date
 # Use gradlew.bat for Windows
 if (Test-Path ".\gradlew.bat") {
     $gradle = ".\gradlew.bat"
-} else {
+}
+else {
     $gradle = "./gradlew"
 }
 
@@ -64,10 +67,11 @@ if ($LASTEXITCODE -eq 0) {
     
     if ($Launch) {
         Write-Host "`nLaunching app..." -ForegroundColor Cyan
-        & $adb shell am start -n "net.sourceforge.opencamera/net.sourceforge.opencamera.MainActivity"
+        & $adb shell am start -n "io.github.ysdede.opencameraomt/net.sourceforge.opencamera.MainActivity"
         Write-Host "App launched!" -ForegroundColor Green
     }
-} else {
+}
+else {
     Write-Host "Build failed!" -ForegroundColor Red
     exit 1
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Open Camera</string> <!-- shouldn't be translated, unless deemed appropriate e.g. alternative alphabets -->
+    <string name="app_name">Open Camera OMT</string> <!-- Modified version with OMT streaming - shouldn't be translated, unless deemed appropriate e.g. alternative alphabets -->
     <string name="action_settings">Settings</string>
     <string name="action_popup">Popup settings</string>
     <string name="intro_ok">OK (This message won\'t show again)</string>
@@ -1052,7 +1052,15 @@
     <string name="preference_privacy_policy_text" translatable="false"> <!-- if changing this, remember to consider if the online privacy policy needs updating -->
         <!-- now interpreted as HTML so that we can have the mailto link, for the contact that's needed for Google Play policies! -->
         <!-- be careful of rewording/removing bits, as some things here may be required for Google Play policies -->
-        Open Camera is developed by Mark Harman.
+        Open Camera OMT is a modified version of Open Camera, developed by ysdede with OMT streaming support.
+        Original Open Camera developed by Mark Harman.
+        &lt;br/&gt;&lt;br/&gt;&lt;b&gt;OMT Streaming:&lt;/b&gt;
+        &lt;br/&gt;This app includes network streaming functionality via OMT (Open Media Transport) protocol.
+        When streaming is enabled, camera video is transmitted over your local network using WiFi.
+        The app requires network and WiFi permissions for this feature.
+        mDNS is used for device discovery on the local network.
+        No data is transmitted outside your local network by the OMT streaming feature.
+        &lt;br/&gt;&lt;br/&gt;&lt;b&gt;Original Open Camera Privacy:&lt;/b&gt;
         &lt;br/&gt;Open Camera accesses camera sensor and microphone data to fulfil its purpose as a camera.
         Microphone is also used for the optional \"Audio control\".
         &lt;br/&gt;Access to files is needed (at least for Android 9 and earlier) to save resultant files such as photos and videos to your device.
@@ -1066,18 +1074,28 @@
         other apps if you use the share option in Open Camera, or when Open Camera is called by
         another app on your device, or when you use the Storage Access Framework option to save
         to another app or service.
-        &lt;br/&gt;Data handling procedures, data retention and deletion policies: Open Camera
-        does not transmit personal or sensitive information to me.
-        &lt;br/&gt;Since Open Camera also uses operating system APIs, you should review relevant privacy policies
+        &lt;br/&gt;Data handling procedures, data retention and deletion policies: Open Camera OMT
+        does not transmit personal or sensitive information to the developers.
+        &lt;br/&gt;Since Open Camera OMT also uses operating system APIs, you should review relevant privacy policies
         such as for your device, manufacturer, operating system and/or Google accounts. For example:
         &lt;br/&gt;*Apps/services such as cloud services on your device may auto-upload photos and videos that are saved on your device.
-        &lt;br/&gt;If you have inquiries about my privacy policy, please contact me by email at
+        &lt;br/&gt;&lt;br/&gt;For inquiries about OMT streaming modifications, contact: ysdede on GitHub.
+        &lt;br/&gt;For inquiries about original Open Camera, contact:
         &lt;a href=\"mailto:mark.harman.apps@gmail.com?subject=Open%20Camera%20privacy%20policy\"&gt;mark.harman.apps@gmail.com&lt;/a&gt;.
     </string>
 
     <string name="preference_screen_licences" translatable="false">Open Source licences</string>
-    <string name="preference_licence_open_camera" translatable="false">Open Camera</string>
-    <string name="preference_licence_open_camera_text" translatable="false">Open Camera is © 2013–2025 Mark Harman, released under the GPL v3 or later. Tap here for full licence text and terms of service.</string>
+    <string name="preference_licence_open_camera" translatable="false">Open Camera OMT</string>
+    <string name="preference_licence_open_camera_text" translatable="false">Open Camera OMT is a modified version of Open Camera with OMT (Open Media Transport) network streaming support added.
+        
+        Original Open Camera © 2013–2025 Mark Harman.
+        OMT streaming modifications © 2026 ysdede.
+        
+        This software is released under the GPL v3 or later.
+        
+        OMT streaming uses libomt and libvmx libraries (MIT License) from the Open Media Transport project.
+        
+        Tap here for full licence text and terms of service.</string>
     <string name="preference_licence_androidx" translatable="false">AndroidX libraries</string>
     <string name="preference_licence_androidx_text" translatable="false">Open Camera uses the AndroidX/Jetpack libraries
         under the Apache license version 2.0. Tap here for full licence text.</string>
