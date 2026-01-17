@@ -38,7 +38,6 @@ cp local.properties.example local.properties
 ```
 
 The APK will be output to `app/build/outputs/apk/release/OpenCameraOMT.apk`
-
 ## Usage
 
 1. Open the app and navigate to **Settings > Video Settings**
