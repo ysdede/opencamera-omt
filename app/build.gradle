@@ -20,10 +20,29 @@ android {
         }
     }
 
+    // Load signing properties from local.properties (gitignored)
+    def keystorePropertiesFile = rootProject.file("local.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreProperties['RELEASE_STORE_FILE']) {
+                storeFile file(keystoreProperties['RELEASE_STORE_FILE'])
+                storePassword keystoreProperties['RELEASE_STORE_PASSWORD']
+                keyAlias keystoreProperties['RELEASE_KEY_ALIAS']
+                keyPassword keystoreProperties['RELEASE_KEY_PASSWORD']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            signingConfig signingConfigs.release
         }
     }
 
@@ -50,6 +69,18 @@ android {
     
     ndkVersion "27.0.12077973"
     //useLibrary 'android.test.mock'
+
+    // Custom APK naming
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            def buildType = variant.buildType.name
+            if (buildType == "release") {
+                outputFileName = "OpenCameraOMT.apk"
+            } else {
+                outputFileName = "OpenCameraOMT-${buildType}.apk"
+            }
+        }
+    }
 }
 
 dependencies {

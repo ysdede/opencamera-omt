@@ -1,0 +1,14 @@
+# local.properties.example
+# Copy this file to local.properties and fill in your values
+# NEVER commit local.properties to version control!
+
+# Android SDK location (usually auto-detected by Android Studio)
+# sdk.dir=C:\\Users\\YourName\\AppData\\Local\\Android\\Sdk
+
+# Release signing configuration (required for release builds)
+# Generate a keystore with:
+#   keytool -genkey -v -keystore your-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias your-alias
+RELEASE_STORE_FILE=../your-release.jks
+RELEASE_STORE_PASSWORD=your_store_password
+RELEASE_KEY_ALIAS=your_key_alias
+RELEASE_KEY_PASSWORD=your_key_password

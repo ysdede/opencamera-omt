@@ -27,6 +27,18 @@ cd opencamera-omt
 ./gradlew assembleDebug
 ```
 
+### Release Build
+
+For signed release builds, copy `local.properties.example` to `local.properties` and configure your signing credentials:
+
+```bash
+cp local.properties.example local.properties
+# Edit local.properties with your keystore details
+./gradlew assembleRelease
+```
+
+The APK will be output to `app/build/outputs/apk/release/OpenCameraOMT.apk`
+
 ## Usage
 
 1. Open the app and navigate to **Settings > Video Settings**

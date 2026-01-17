@@ -44,6 +44,10 @@ opencameraabout.txt
 FHD-1920x1080-Color-Bars-Vert-Cont.png
 app/src/main/res/drawable/test_pattern_1080p.png
 
+# --- Release Signing (NEVER push these!) ---
+*.keystore
+*.jks
+
 # --- Personal / Development Files (Do not push) ---
 LOGBOOK.md
 libomt/LOGBOOK.md
