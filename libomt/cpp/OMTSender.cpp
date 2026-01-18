@@ -362,16 +362,14 @@ int Sender::send(const MediaFrame& frame) {
         for (const auto& ch : channels_) {
             if (!ch->isConnected()) continue;
             
-            // Check subscription (allow if no subscription set for compatibility)
-            if (ch->isVideoSubscribed() || 
-                ch->getSubscriptions() == Subscription::None) {
-                
-                int sent = ch->sendAsync(&header, sizeof(header),
-                                         &extHeader, sizeof(extHeader),
-                                         encodeBuffer_.data(), encodedLen);
-                if (sent > 0) {
-                    totalSent += sent;
-                }
+            // Only send if client has subscribed to video (per OMT protocol)
+            if (!ch->isVideoSubscribed()) continue;
+            
+            int sent = ch->sendAsync(&header, sizeof(header),
+                                     &extHeader, sizeof(extHeader),
+                                     encodeBuffer_.data(), encodedLen);
+            if (sent > 0) {
+                totalSent += sent;
             }
         }
     }

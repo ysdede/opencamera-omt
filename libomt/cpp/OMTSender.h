@@ -64,7 +64,7 @@ struct SenderConfig {
     std::string name = "OMT Sender";
     Quality quality = Quality::Default;
     int port = Constants::NETWORK_PORT_START;
-    int sendBufferSize = 512 * 1024;
+    int sendBufferSize = Constants::NETWORK_SEND_BUFFER;  // Official: 65536 (64KB)
     std::string senderInfoXml = "<OMTInfo ProductName=\"OMT Android Sender\" Manufacturer=\"Open Media Transport\" Version=\"1.0\" />";
 };
 

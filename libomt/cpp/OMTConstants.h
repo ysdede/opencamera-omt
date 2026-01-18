@@ -16,8 +16,8 @@ namespace omt {
 namespace Constants {
     constexpr int NETWORK_SEND_BUFFER = 65536;
     constexpr int NETWORK_RECEIVE_BUFFER = 8388608;  // 8MB
-    constexpr int NETWORK_ASYNC_COUNT = 128;         // Increased for Audio+Video
-    constexpr int NETWORK_ASYNC_BUFFER_AV = 65536;   // 64KB initial (grows as needed)
+    constexpr int NETWORK_ASYNC_COUNT = 4;           // Official: 4 (matches libomtnet)
+    constexpr int NETWORK_ASYNC_BUFFER_AV = 1048576; // Official: 1MB (matches libomtnet)
     constexpr int NETWORK_ASYNC_COUNT_META_ONLY = 64;
     constexpr int NETWORK_ASYNC_BUFFER_META_ONLY = 1024;
     
