@@ -61,7 +61,7 @@ public:
 class Channel {
 public:
     Channel(int socketFd, struct sockaddr_in address, 
-            int sendBufferSize = 512 * 1024,
+            int sendBufferSize = Constants::NETWORK_SEND_BUFFER,  // Official: 65536 (64KB)
             IChannelListener* listener = nullptr);
     
     ~Channel();

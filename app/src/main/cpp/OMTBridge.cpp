@@ -13,6 +13,7 @@
 #include <mutex>
 
 #include "libomt.h"
+#include <chrono>
 
 #define LOG_TAG "OMTBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -121,6 +122,11 @@ Java_net_sourceforge_opencamera_OMTSender_nativeSendFrame(
     
     // Prepare the media frame
     OMTMediaFrame frame = {};
+
+    auto now = std::chrono::steady_clock::now();
+    auto duration = now.time_since_epoch();
+    int64_t timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() / 100;
+
     frame.Type = OMTFrameType_Video;
     frame.Codec = OMTCodec_NV12;
     frame.Width = width;
@@ -131,7 +137,8 @@ Java_net_sourceforge_opencamera_OMTSender_nativeSendFrame(
     frame.FrameRateD = g_frameRateD;
     frame.AspectRatio = (float)width / (float)height;
     frame.ColorSpace = (height >= 720) ? OMTColorSpace_BT709 : OMTColorSpace_BT601;
-    frame.Timestamp = -1;  // Auto-generate timestamp
+    frame.Timestamp = timestamp;
+
     frame.Data = data;
     frame.DataLength = dataLength;
     

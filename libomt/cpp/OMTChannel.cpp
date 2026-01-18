@@ -42,6 +42,12 @@ Channel::Channel(int socketFd, struct sockaddr_in address,
     // TCP keepalive
     setsockopt(socketFd_, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
     
+    // TCP_KEEPIDLE = 5 seconds (matches official libomtnet)
+#ifdef TCP_KEEPIDLE
+    int keepIdle = 5;
+    setsockopt(socketFd_, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(keepIdle));
+#endif
+    
     // Create async send pool
     sendPool_ = std::make_unique<AsyncPool>(
         Constants::NETWORK_ASYNC_COUNT, 
@@ -330,7 +336,17 @@ void Channel::receiverLoop() {
             if (header->frameType == static_cast<uint8_t>(FrameType::Metadata) && 
                 header->dataLength > 0) {
                 char* xmlData = reinterpret_cast<char*>(recvBuffer.data() + FrameHeader::SIZE);
-                std::string xml(xmlData, header->dataLength - 1);
+                
+                // Fix for conflicting implementations:
+                // - C# libomtnet sends XML *without* null terminator
+                // - Protocol says null terminated
+                // - C++ sender sends *with* null terminator
+                size_t strLen = header->dataLength;
+                if (strLen > 0 && xmlData[strLen - 1] == '\0') {
+                    strLen--;
+                }
+                
+                std::string xml(xmlData, strLen);
                 processMetadata(xml);
             }
             
