@@ -1,3 +1,5 @@
+
+
 # Open Camera OMT
 
 A fork of [Open Camera](https://opencamera.org.uk/) with **Open Media Transport (OMT)** network streaming support. Stream your Android camera feed in real-time over your local network to applications like vMix, OBS (via OMT plugin), or the OMT Viewer.
@@ -38,6 +40,7 @@ cp local.properties.example local.properties
 ```
 
 The APK will be output to `app/build/outputs/apk/release/OpenCameraOMT.apk`
+
 ## Usage
 
 1. Open the app and navigate to **Settings > Video Settings**
